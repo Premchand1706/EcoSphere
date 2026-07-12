@@ -18,6 +18,5 @@ services:
   - type: web
     name: ecosphere-frontend
     env: static
-    plan: free
     buildCommand: cd client && npm install && npm run build
     staticPublishPath: client/dist
