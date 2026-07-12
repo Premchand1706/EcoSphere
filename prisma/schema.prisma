@@ -1,0 +1,408 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Organization {
+  id                String             @id @default(uuid())
+  name              String
+  domain            String             @unique
+  subscriptionTier  String             @default("STANDARD")
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  users             User[]
+  departments       Department[]
+  carbonLogs        CarbonLog[]
+  reductionTargets  ReductionTarget[]
+  csrActivities     CsrActivity[]
+  policies          Policy[]
+  audits            Audit[]
+  complianceIssues  ComplianceIssue[]
+  auditLogs         AuditLog[]
+  challenges        Challenge[]
+  rewards           Reward[]
+  emissionFactors   EmissionFactor[]
+  badges            Badge[]
+  notifications     Notification[]
+
+  @@map("organizations")
+}
+
+model UserRole {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String
+  users       User[]
+
+  @@map("user_roles")
+}
+
+model Department {
+  id               String            @id @default(uuid())
+  organizationId   String            @map("organization_id")
+  name             String
+  managerId        String?           @map("manager_id")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  manager          User?             @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
+  users            User[]            @relation("UserDepartment")
+  carbonLogs       CarbonLog[]
+  reductionTargets ReductionTarget[]
+
+  @@unique([organizationId, name])
+  @@map("departments")
+}
+
+model User {
+  id                      String                   @id @default(uuid())
+  organizationId          String                   @map("organization_id")
+  departmentId            String?                  @map("department_id")
+  roleId                  String                   @map("role_id")
+  email                   String
+  passwordHash            String                   @map("password_hash")
+  firstName               String                   @map("first_name")
+  lastName                String                   @map("last_name")
+  xp                      Int                      @default(0)
+  level                   Int                      @default(1)
+  status                  String                   @default("ACTIVE")
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  organization            Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department              Department?              @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
+  role                    UserRole                 @relation(fields: [roleId], references: [id])
+  managedDepartments      Department[]             @relation("DepartmentManager")
+  loggedCarbonLogs        CarbonLog[]              @relation("LoggedBy")
+  approvedCarbonLogs      CarbonLog[]              @relation("ApprovedBy")
+  csrRegistrations        CsrRegistration[]
+  approvedCsrRegistrations CsrRegistration[]       @relation("CsrApprovedBy")
+  policyAcknowledgements  PolicyAcknowledgement[]
+  auditedAudits           Audit[]                  @relation("AuditedBy")
+  assignedComplianceIssues ComplianceIssue[]        @relation("AssignedTo")
+  auditLogs               AuditLog[]
+  userChallenges          UserChallenge[]
+  userBadges              UserBadge[]
+  redeemedRewards         RedeemedReward[]
+  notifications           Notification[]
+  notificationSettings    UserNotificationSetting?
+
+  @@unique([organizationId, email])
+  @@map("users")
+}
+
+model EmissionFactor {
+  id             String        @id @default(uuid())
+  organizationId String?       @map("organization_id")
+  activityType   String        @map("activity_type")
+  category       String
+  factor         Float
+  unit           String
+  source         String
+  year           Int
+  createdAt      DateTime      @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  carbonLogs     CarbonLog[]
+
+  @@unique([organizationId, activityType, year])
+  @@map("emission_factors")
+}
+
+model CarbonLog {
+  id               String          @id @default(uuid())
+  organizationId   String          @map("organization_id")
+  departmentId     String          @map("department_id")
+  loggedById       String          @map("logged_by")
+  activityType     String          @map("activity_type")
+  category         String
+  quantity         Float
+  unit             String
+  emissionFactorId String          @map("emission_factor_id")
+  calculatedCo2e   Float           @map("calculated_co2e")
+  logDate          DateTime        @map("log_date")
+  evidenceUrl      String?         @map("evidence_url")
+  status           String          @default("PENDING_APPROVAL")
+  approvedById     String?         @map("approved_by")
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department       Department      @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  loggedBy         User            @relation("LoggedBy", fields: [loggedById], references: [id], onDelete: Restrict)
+  approvedBy       User?           @relation("ApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  emissionFactor   EmissionFactor  @relation(fields: [emissionFactorId], references: [id])
+
+  @@map("carbon_logs")
+}
+
+model ReductionTarget {
+  id                 String       @id @default(uuid())
+  organizationId     String       @map("organization_id")
+  departmentId       String?      @map("department_id")
+  scope              String
+  targetReductionPct Float        @map("target_reduction_pct")
+  baselineValue      Float        @map("baseline_value")
+  targetValue        Float        @map("target_value")
+  startDate          DateTime     @map("start_date")
+  endDate            DateTime     @map("end_date")
+  status             String       @default("ACTIVE")
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department         Department?  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@map("reduction_targets")
+}
+
+model CsrActivity {
+  id               String            @id @default(uuid())
+  organizationId   String            @map("organization_id")
+  title            String
+  description      String
+  type             String
+  startDate        DateTime          @map("start_date")
+  endDate          DateTime          @map("end_date")
+  requiredHours    Float             @default(0) @map("required_hours")
+  targetFund       Float             @default(0) @map("target_fund")
+  currentFund      Float             @default(0) @map("current_fund")
+  evidenceRequired Boolean           @default(true) @map("evidence_required")
+  status           String            @default("DRAFT")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  registrations    CsrRegistration[]
+
+  @@map("csr_activities")
+}
+
+model CsrRegistration {
+  id             String                @id @default(uuid())
+  csrActivityId  String                @map("csr_activity_id")
+  userId         String                @map("user_id")
+  status         String                @default("REGISTERED")
+  loggedHours    Float                 @default(0) @map("logged_hours")
+  evidenceUrl    String?               @map("evidence_url")
+  approvalStatus String                @default("PENDING") @map("approval_status")
+  approvedById   String?               @map("approved_by")
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  csrActivity    CsrActivity           @relation(fields: [csrActivityId], references: [id], onDelete: Cascade)
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy     User?                 @relation("CsrApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([csrActivityId, userId])
+  @@map("csr_registrations")
+}
+
+model Policy {
+  id             String                 @id @default(uuid())
+  organizationId String                 @map("organization_id")
+  title          String
+  content        String
+  category       String
+  version        String
+  status         String                 @default("DRAFT")
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  signatures     PolicyAcknowledgement[]
+
+  @@map("policies")
+}
+
+model PolicyAcknowledgement {
+  id             String   @id @default(uuid())
+  policyId       String   @map("policy_id")
+  userId         String   @map("user_id")
+  acknowledgedAt DateTime @default(now()) @map("acknowledged_at")
+  policy         Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([policyId, userId])
+  @@map("policy_acknowledgements")
+}
+
+model Audit {
+  id               String            @id @default(uuid())
+  organizationId   String            @map("organization_id")
+  auditorId        String            @map("auditor_id")
+  title            String
+  scope            String
+  startDate        DateTime          @map("start_date")
+  endDate          DateTime          @map("end_date")
+  status           String            @default("PLANNED")
+  score            Float?
+  reportUrl        String?           @map("report_url")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  auditor          User              @relation("AuditedBy", fields: [auditorId], references: [id], onDelete: Restrict)
+  complianceIssues ComplianceIssue[]
+
+  @@map("audits")
+}
+
+model ComplianceIssue {
+  id                String        @id @default(uuid())
+  organizationId    String        @map("organization_id")
+  auditId           String?       @map("audit_id")
+  title             String
+  description       String
+  severity          String
+  status            String        @default("OPEN")
+  ownerId           String        @map("owner_id")
+  dueDate           DateTime      @map("due_date")
+  resolutionDetails String?       @map("resolution_details")
+  resolvedAt        DateTime?     @map("resolved_at")
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  audit             Audit?        @relation(fields: [auditId], references: [id], onDelete: SetNull)
+  owner             User          @relation("AssignedTo", fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@map("compliance_issues")
+}
+
+model AuditLog {
+  id             String        @id @default(uuid())
+  organizationId String?       @map("organization_id")
+  userId         String?       @map("user_id")
+  action         String
+  entityType     String        @map("entity_type")
+  entityId       String?       @map("entity_id")
+  preState       String?       @map("pre_state")
+  postState      String?       @map("post_state")
+  ipAddress      String?       @map("ip_address")
+  userAgent      String?       @map("user_agent")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+model Badge {
+  id             String        @id @default(uuid())
+  organizationId String?       @map("organization_id")
+  name           String
+  description    String
+  iconUrl        String        @map("icon_url")
+  unlockRuleType String        @map("unlock_rule_type")
+  unlockRuleValue Int
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userBadges     UserBadge[]
+  challenges     Challenge[]
+
+  @@map("badges")
+}
+
+model Challenge {
+  id             String          @id @default(uuid())
+  organizationId String          @map("organization_id")
+  title          String
+  description    String
+  type           String
+  targetValue    Float           @map("target_value")
+  xpReward       Int
+  badgeId        String?         @map("badge_id")
+  startDate      DateTime        @map("start_date")
+  endDate        DateTime        @map("end_date")
+  status         String          @default("DRAFT")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  badge          Badge?          @relation(fields: [badgeId], references: [id], onDelete: SetNull)
+  userChallenges UserChallenge[]
+
+  @@map("challenges")
+}
+
+model UserChallenge {
+  id           String              @id @default(uuid())
+  challengeId  String              @map("challenge_id")
+  userId       String              @map("user_id")
+  currentValue Float               @default(0) @map("current_value")
+  status       String              @default("JOINED")
+  completedAt  DateTime?           @map("completed_at")
+  challenge    Challenge           @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+  @@map("user_challenges")
+}
+
+model UserBadge {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  badgeId    String   @map("badge_id")
+  unlockedAt DateTime @default(now()) @map("unlocked_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge      Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+model Reward {
+  id              String           @id @default(uuid())
+  organizationId  String           @map("organization_id")
+  title           String
+  description     String
+  xpCost          Int
+  stock           Int              @default(0)
+  status          String           @default("ACTIVE")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  redeemedRewards RedeemedReward[]
+
+  @@map("rewards")
+}
+
+model RedeemedReward {
+  id         String           @id @default(uuid())
+  rewardId   String           @map("reward_id")
+  userId     String           @map("user_id")
+  status     String           @default("PENDING")
+  redeemedAt DateTime         @default(now()) @map("redeemed_at")
+  updatedAt  DateTime         @updatedAt
+  reward     Reward           @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("redeemed_rewards")
+}
+
+model Notification {
+  id             String           @id @default(uuid())
+  organizationId String           @map("organization_id")
+  userId         String           @map("user_id")
+  title          String
+  message        String
+  type           String
+  isRead         Boolean          @default(false) @map("is_read")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model UserNotificationSetting {
+  id              String  @id @default(uuid())
+  userId          String  @unique @map("user_id")
+  emailCompliance Boolean @default(true) @map("email_compliance")
+  emailChallenges Boolean @default(true) @map("email_challenges")
+  emailApprovals  Boolean @default(true) @map("email_approvals")
+  inAppCompliance Boolean @default(true) @map("in_app_compliance")
+  inAppChallenges Boolean @default(true) @map("in_app_challenges")
+  inAppApprovals  Boolean @default(true) @map("in_app_approvals")
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notification_settings")
+}

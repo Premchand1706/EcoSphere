@@ -1,0 +1,560 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum SubscriptionTier {
+  STANDARD
+  ENTERPRISE
+  UNLIMITED
+}
+
+enum RoleName {
+  SUPER_ADMIN
+  ORG_ADMIN
+  DEPT_MANAGER
+  AUDITOR
+  EMPLOYEE
+}
+
+enum CarbonLogStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+enum ScopeCategory {
+  SCOPE_1
+  SCOPE_2
+  SCOPE_3
+}
+
+enum TargetScope {
+  SCOPE_1
+  SCOPE_2
+  SCOPE_3
+  TOTAL
+}
+
+enum TargetStatus {
+  ACTIVE
+  ACHIEVED
+  FAILED
+}
+
+enum CsrActivityType {
+  VOLUNTEERING
+  FUNDRAISING
+  ENVIRONMENTAL_CLEANUP
+  TRAINING
+}
+
+enum CsrActivityStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum CsrRegistrationStatus {
+  REGISTERED
+  PARTICIPATED
+  ABSENT
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PolicyCategory {
+  ENVIRONMENTAL
+  SOCIAL
+  GOVERNANCE
+}
+
+enum PolicyStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum AuditScope {
+  ENVIRONMENTAL
+  SOCIAL
+  GOVERNANCE
+  COMPREHENSIVE
+}
+
+enum AuditStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum SeverityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IssueStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  OVERDUE
+}
+
+enum BadgeRuleType {
+  CARBON_REDUCTION_COUNT
+  CSR_HOURS_THRESHOLD
+  POLICY_READ_ALL
+  PERFECT_COMPLIANCE
+}
+
+enum ChallengeType {
+  CARBON_REDUCTION
+  CSR_PARTICIPATION
+  POLICY_READING
+}
+
+enum ChallengeStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum UserChallengeStatus {
+  JOINED
+  COMPLETED
+  FAILED
+}
+
+enum RewardStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RedemptionStatus {
+  PENDING
+  APPROVED
+  FULFILLED
+  REJECTED
+}
+
+enum NotificationType {
+  SYSTEM
+  CHALLENGE
+  COMPLIANCE
+  APPROVAL
+  BADGE
+}
+
+model Organization {
+  id                String             @id @default(uuid()) @db.Uuid
+  name              String             @db.VarChar(255)
+  domain            String             @unique @db.VarChar(255)
+  subscriptionTier  SubscriptionTier   @default(STANDARD)
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime           @updatedAt @db.Timestamptz(6)
+  users             User[]
+  departments       Department[]
+  carbonLogs        CarbonLog[]
+  reductionTargets  ReductionTarget[]
+  csrActivities     CsrActivity[]
+  policies          Policy[]
+  audits            Audit[]
+  complianceIssues  ComplianceIssue[]
+  auditLogs         AuditLog[]
+  challenges        Challenge[]
+  rewards           Reward[]
+  emissionFactors   EmissionFactor[]
+  badges            Badge[]
+  notifications     Notification[]
+
+  @@map("organizations")
+}
+
+model UserRole {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        RoleName @unique
+  description String   @db.Text
+  users       User[]
+
+  @@map("user_roles")
+}
+
+model Department {
+  id               String            @id @default(uuid()) @db.Uuid
+  organizationId   String            @db.Uuid @map("organization_id")
+  name             String            @db.VarChar(255)
+  managerId        String?           @db.Uuid @map("manager_id")
+  createdAt        DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @db.Timestamptz(6)
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  manager          User?             @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
+  users            User[]            @relation("UserDepartment")
+  carbonLogs       CarbonLog[]
+  reductionTargets ReductionTarget[]
+
+  @@unique([organizationId, name])
+  @@map("departments")
+}
+
+model User {
+  id                      String                   @id @default(uuid()) @db.Uuid
+  organizationId          String                   @db.Uuid @map("organization_id")
+  departmentId            String?                  @db.Uuid @map("department_id")
+  roleId                  String                   @db.Uuid @map("role_id")
+  email                   String                   @db.VarChar(255)
+  passwordHash            String                   @db.VarChar(255) @map("password_hash")
+  firstName               String                   @db.VarChar(100) @map("first_name")
+  lastName                String                   @db.VarChar(100) @map("last_name")
+  xp                      Int                      @default(0)
+  level                   Int                      @default(1)
+  status                  String                   @default("ACTIVE") @db.VarChar(50)
+  createdAt               DateTime                 @default(now()) @db.Timestamptz(6)
+  updatedAt               DateTime                 @updatedAt @db.Timestamptz(6)
+  organization            Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department              Department?              @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
+  role                    UserRole                 @relation(fields: [roleId], references: [id])
+  managedDepartments      Department[]             @relation("DepartmentManager")
+  loggedCarbonLogs        CarbonLog[]              @relation("LoggedBy")
+  approvedCarbonLogs      CarbonLog[]              @relation("ApprovedBy")
+  csrRegistrations        CsrRegistration[]
+  approvedCsrRegistrations CsrRegistration[]       @relation("CsrApprovedBy")
+  policyAcknowledgements  PolicyAcknowledgement[]
+  auditedAudits           Audit[]                  @relation("AuditedBy")
+  assignedComplianceIssues ComplianceIssue[]        @relation("AssignedTo")
+  auditLogs               AuditLog[]
+  userChallenges          UserChallenge[]
+  userBadges              UserBadge[]
+  redeemedRewards         RedeemedReward[]
+  notifications           Notification[]
+  notificationSettings    UserNotificationSetting?
+
+  @@unique([organizationId, email])
+  @@map("users")
+}
+
+model EmissionFactor {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String?       @db.Uuid @map("organization_id")
+  activityType   String        @db.VarChar(100) @map("activity_type")
+  category       ScopeCategory
+  factor         Decimal       @db.Decimal(12, 6)
+  unit           String        @db.VarChar(50)
+  source         String        @db.VarChar(255)
+  year           Int
+  createdAt      DateTime      @default(now()) @db.Timestamptz(6)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  carbonLogs     CarbonLog[]
+
+  @@unique([organizationId, activityType, year])
+  @@map("emission_factors")
+}
+
+model CarbonLog {
+  id               String          @id @default(uuid()) @db.Uuid
+  organizationId   String          @db.Uuid @map("organization_id")
+  departmentId     String          @db.Uuid @map("department_id")
+  loggedById       String          @db.Uuid @map("logged_by")
+  activityType     String          @db.VarChar(100) @map("activity_type")
+  category         ScopeCategory
+  quantity         Decimal         @db.Decimal(14, 4)
+  unit             String          @db.VarChar(50)
+  emissionFactorId String          @db.Uuid @map("emission_factor_id")
+  calculatedCo2e   Decimal         @db.Decimal(14, 4) @map("calculated_co2e")
+  logDate          DateTime        @db.Date @map("log_date")
+  evidenceUrl      String?         @db.VarChar(512) @map("evidence_url")
+  status           CarbonLogStatus @default(PENDING_APPROVAL)
+  approvedById     String?         @db.Uuid @map("approved_by")
+  notes            String?         @db.Text
+  createdAt        DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime        @updatedAt @db.Timestamptz(6)
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department       Department      @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  loggedBy         User            @relation("LoggedBy", fields: [loggedById], references: [id], onDelete: Restrict)
+  approvedBy       User?           @relation("ApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  emissionFactor   EmissionFactor  @relation(fields: [emissionFactorId], references: [id])
+
+  @@map("carbon_logs")
+}
+
+model ReductionTarget {
+  id                 String       @id @default(uuid()) @db.Uuid
+  organizationId     String       @db.Uuid @map("organization_id")
+  departmentId       String?      @db.Uuid @map("department_id")
+  scope              TargetScope
+  targetReductionPct Decimal      @db.Decimal(5, 2) @map("target_reduction_pct")
+  baselineValue      Decimal      @db.Decimal(14, 4) @map("baseline_value")
+  targetValue        Decimal      @db.Decimal(14, 4) @map("target_value")
+  startDate          DateTime     @db.Date @map("start_date")
+  endDate            DateTime     @db.Date @map("end_date")
+  status             TargetStatus @default(ACTIVE)
+  createdAt          DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime     @updatedAt @db.Timestamptz(6)
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department         Department?  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@map("reduction_targets")
+}
+
+model CsrActivity {
+  id               String            @id @default(uuid()) @db.Uuid
+  organizationId   String            @db.Uuid @map("organization_id")
+  title            String            @db.VarChar(255)
+  description      String            @db.Text
+  type             CsrActivityType
+  startDate        DateTime          @db.Timestamptz(6) @map("start_date")
+  endDate          DateTime          @db.Timestamptz(6) @map("end_date")
+  requiredHours    Decimal           @default(0) @db.Decimal(6, 2) @map("required_hours")
+  targetFund       Decimal           @default(0) @db.Decimal(14, 2) @map("target_fund")
+  currentFund      Decimal           @default(0) @db.Decimal(14, 2) @map("current_fund")
+  evidenceRequired Boolean           @default(true) @map("evidence_required")
+  status           CsrActivityStatus @default(DRAFT)
+  createdAt        DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @db.Timestamptz(6)
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  registrations    CsrRegistration[]
+
+  @@map("csr_activities")
+}
+
+model CsrRegistration {
+  id             String                @id @default(uuid()) @db.Uuid
+  csrActivityId  String                @db.Uuid @map("csr_activity_id")
+  userId         String                @db.Uuid @map("user_id")
+  status         CsrRegistrationStatus @default(REGISTERED)
+  loggedHours    Decimal               @default(0) @db.Decimal(6, 2) @map("logged_hours")
+  evidenceUrl    String?               @db.VarChar(512) @map("evidence_url")
+  approvalStatus ApprovalStatus        @default(PENDING) @map("approval_status")
+  approvedById   String?               @db.Uuid @map("approved_by")
+  createdAt      DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime              @updatedAt @db.Timestamptz(6)
+  csrActivity    CsrActivity           @relation(fields: [csrActivityId], references: [id], onDelete: Cascade)
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy     User?                 @relation("CsrApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([csrActivityId, userId])
+  @@map("csr_registrations")
+}
+
+model Policy {
+  id             String                 @id @default(uuid()) @db.Uuid
+  organizationId String                 @db.Uuid @map("organization_id")
+  title          String                 @db.VarChar(255)
+  content        String                 @db.Text
+  category       PolicyCategory
+  version        String                 @db.VarChar(20)
+  status         PolicyStatus           @default(DRAFT)
+  createdAt      DateTime               @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime               @updatedAt @db.Timestamptz(6)
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  signatures     PolicyAcknowledgement[]
+
+  @@map("policies")
+}
+
+model PolicyAcknowledgement {
+  id             String   @id @default(uuid()) @db.Uuid
+  policyId       String   @db.Uuid @map("policy_id")
+  userId         String   @db.Uuid @map("user_id")
+  acknowledgedAt DateTime @default(now()) @db.Timestamptz(6) @map("acknowledged_at")
+  policy         Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([policyId, userId])
+  @@map("policy_acknowledgements")
+}
+
+model Audit {
+  id               String            @id @default(uuid()) @db.Uuid
+  organizationId   String            @db.Uuid @map("organization_id")
+  auditorId        String            @db.Uuid @map("auditor_id")
+  title            String            @db.VarChar(255)
+  scope            AuditScope
+  startDate        DateTime          @db.Date @map("start_date")
+  endDate          DateTime          @db.Date @map("end_date")
+  status           AuditStatus       @default(PLANNED)
+  score            Decimal?          @db.Decimal(5, 2)
+  reportUrl        String?           @db.VarChar(512) @map("report_url")
+  createdAt        DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @db.Timestamptz(6)
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  auditor          User              @relation("AuditedBy", fields: [auditorId], references: [id], onDelete: RESTRICT)
+  complianceIssues ComplianceIssue[]
+
+  @@map("audits")
+}
+
+model ComplianceIssue {
+  id                String        @id @default(uuid()) @db.Uuid
+  organizationId    String        @db.Uuid @map("organization_id")
+  auditId           String?       @db.Uuid @map("audit_id")
+  title             String        @db.VarChar(255)
+  description       String        @db.Text
+  severity          SeverityLevel
+  status            IssueStatus   @default(OPEN)
+  ownerId           String        @db.Uuid @map("owner_id")
+  dueDate           DateTime      @db.Date @map("due_date")
+  resolutionDetails String?       @db.Text @map("resolution_details")
+  resolvedAt        DateTime?     @db.Timestamptz(6) @map("resolved_at")
+  createdAt         DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(6)
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  audit             Audit?        @relation(fields: [auditId], references: [id], onDelete: SetNull)
+  owner             User          @relation("AssignedTo", fields: [ownerId], references: [id], onDelete: RESTRICT)
+
+  @@map("compliance_issues")
+}
+
+model AuditLog {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String?       @db.Uuid @map("organization_id")
+  userId         String?       @db.Uuid @map("user_id")
+  action         String        @db.VarChar(100)
+  entityType     String        @db.VarChar(100) @map("entity_type")
+  entityId       String?       @db.Uuid @map("entity_id")
+  preState       Json?         @map("pre_state")
+  postState      Json?         @map("post_state")
+  ipAddress      String?       @db.VarChar(45) @map("ip_address")
+  userAgent      String?       @db.VarChar(255) @map("user_agent")
+  createdAt      DateTime      @default(now()) @db.Timestamptz(6) @map("created_at")
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+model Badge {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String?       @db.Uuid @map("organization_id")
+  name           String        @db.VarChar(100)
+  description    String        @db.Text
+  iconUrl        String        @db.VarChar(255) @map("icon_url")
+  unlockRuleType BadgeRuleType @map("unlock_rule_type")
+  unlockRuleValue Int          @map("unlock_rule_value")
+  createdAt      DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(6)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userBadges     UserBadge[]
+  challenges     Challenge[]
+
+  @@map("badges")
+}
+
+model Challenge {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @db.Uuid @map("organization_id")
+  title          String          @db.VarChar(255)
+  description    String          @db.Text
+  type           ChallengeType
+  targetValue    Decimal         @db.Decimal(14, 4) @map("target_value")
+  xpReward       Int             @map("xp_reward")
+  badgeId        String?         @db.Uuid @map("badge_id")
+  startDate      DateTime        @db.Timestamptz(6) @map("start_date")
+  endDate        DateTime        @db.Timestamptz(6) @map("end_date")
+  status         ChallengeStatus @default(DRAFT)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(6)
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  badge          Badge?          @relation(fields: [badgeId], references: [id], onDelete: SetNull)
+  userChallenges UserChallenge[]
+
+  @@map("challenges")
+}
+
+model UserChallenge {
+  id           String              @id @default(uuid()) @db.Uuid
+  challengeId  String              @db.Uuid @map("challenge_id")
+  userId       String              @db.Uuid @map("user_id")
+  currentValue Decimal             @default(0) @db.Decimal(14, 4) @map("current_value")
+  status       UserChallengeStatus @default(JOINED)
+  completedAt  DateTime?           @db.Timestamptz(6) @map("completed_at")
+  challenge    Challenge           @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+  @@map("user_challenges")
+}
+
+model UserBadge {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid @map("user_id")
+  badgeId    String   @db.Uuid @map("badge_id")
+  unlockedAt DateTime @default(now()) @db.Timestamptz(6) @map("unlocked_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge      Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+model Reward {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String           @db.Uuid @map("organization_id")
+  title           String           @db.VarChar(255)
+  description     String           @db.Text
+  xpCost          Int              @map("xp_cost")
+  stock           Int              @default(0)
+  status          RewardStatus     @default(ACTIVE)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(6)
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  redeemedRewards RedeemedReward[]
+
+  @@map("rewards")
+}
+
+model RedeemedReward {
+  id         String           @id @default(uuid()) @db.Uuid
+  rewardId   String           @db.Uuid @map("reward_id")
+  userId     String           @db.Uuid @map("user_id")
+  status     RedemptionStatus @default(PENDING)
+  redeemedAt DateTime         @default(now()) @db.Timestamptz(6) @map("redeemed_at")
+  updatedAt  DateTime         @updatedAt @db.Timestamptz(6)
+  reward     Reward           @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("redeemed_rewards")
+}
+
+model Notification {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @db.Uuid @map("organization_id")
+  userId         String           @db.Uuid @map("user_id")
+  title          String           @db.VarChar(255)
+  message        String           @db.Text
+  type           NotificationType
+  isRead         Boolean          @default(false) @map("is_read")
+  createdAt      DateTime         @default(now()) @db.Timestamptz(6) @map("created_at")
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model UserNotificationSetting {
+  id              String  @id @default(uuid()) @db.Uuid
+  userId          String  @unique @db.Uuid @map("user_id")
+  emailCompliance Boolean @default(true) @map("email_compliance")
+  emailChallenges Boolean @default(true) @map("email_challenges")
+  emailApprovals  Boolean @default(true) @map("email_approvals")
+  inAppCompliance Boolean @default(true) @map("in_app_compliance")
+  inAppChallenges Boolean @default(true) @map("in_app_challenges")
+  inAppApprovals  Boolean @default(true) @map("in_app_approvals")
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notification_settings")
+}

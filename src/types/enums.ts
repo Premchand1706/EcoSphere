@@ -1,0 +1,151 @@
+export enum SubscriptionTier {
+  STANDARD = 'STANDARD',
+  ENTERPRISE = 'ENTERPRISE',
+  UNLIMITED = 'UNLIMITED'
+}
+
+export enum RoleName {
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  ORG_ADMIN = 'ORG_ADMIN',
+  DEPT_MANAGER = 'DEPT_MANAGER',
+  AUDITOR = 'AUDITOR',
+  EMPLOYEE = 'EMPLOYEE'
+}
+
+export enum CarbonLogStatus {
+  DRAFT = 'DRAFT',
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED'
+}
+
+export enum ScopeCategory {
+  SCOPE_1 = 'SCOPE_1',
+  SCOPE_2 = 'SCOPE_2',
+  SCOPE_3 = 'SCOPE_3'
+}
+
+export enum TargetScope {
+  SCOPE_1 = 'SCOPE_1',
+  SCOPE_2 = 'SCOPE_2',
+  SCOPE_3 = 'SCOPE_3',
+  TOTAL = 'TOTAL'
+}
+
+export enum TargetStatus {
+  ACTIVE = 'ACTIVE',
+  ACHIEVED = 'ACHIEVED',
+  FAILED = 'FAILED'
+}
+
+export enum CsrActivityType {
+  VOLUNTEERING = 'VOLUNTEERING',
+  FUNDRAISING = 'FUNDRAISING',
+  ENVIRONMENTAL_CLEANUP = 'ENVIRONMENTAL_CLEANUP',
+  TRAINING = 'TRAINING'
+}
+
+export enum CsrActivityStatus {
+  DRAFT = 'DRAFT',
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED'
+}
+
+export enum CsrRegistrationStatus {
+  REGISTERED = 'REGISTERED',
+  PARTICIPATED = 'PARTICIPATED',
+  ABSENT = 'ABSENT'
+}
+
+export enum ApprovalStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED'
+}
+
+export enum PolicyCategory {
+  ENVIRONMENTAL = 'ENVIRONMENTAL',
+  SOCIAL = 'SOCIAL',
+  GOVERNANCE = 'GOVERNANCE'
+}
+
+export enum PolicyStatus {
+  DRAFT = 'DRAFT',
+  ACTIVE = 'ACTIVE',
+  ARCHIVED = 'ARCHIVED'
+}
+
+export enum AuditScope {
+  ENVIRONMENTAL = 'ENVIRONMENTAL',
+  SOCIAL = 'SOCIAL',
+  GOVERNANCE = 'GOVERNANCE',
+  COMPREHENSIVE = 'COMPREHENSIVE'
+}
+
+export enum AuditStatus {
+  PLANNED = 'PLANNED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  ARCHIVED = 'ARCHIVED'
+}
+
+export enum SeverityLevel {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  CRITICAL = 'CRITICAL'
+}
+
+export enum IssueStatus {
+  OPEN = 'OPEN',
+  INVESTIGATING = 'INVESTIGATING',
+  RESOLVED = 'RESOLVED',
+  OVERDUE = 'OVERDUE'
+}
+
+export enum BadgeRuleType {
+  CARBON_REDUCTION_COUNT = 'CARBON_REDUCTION_COUNT',
+  CSR_HOURS_THRESHOLD = 'CSR_HOURS_THRESHOLD',
+  POLICY_READ_ALL = 'POLICY_READ_ALL',
+  PERFECT_COMPLIANCE = 'PERFECT_COMPLIANCE'
+}
+
+export enum ChallengeType {
+  CARBON_REDUCTION = 'CARBON_REDUCTION',
+  CSR_PARTICIPATION = 'CSR_PARTICIPATION',
+  POLICY_READING = 'POLICY_READING'
+}
+
+export enum ChallengeStatus {
+  DRAFT = 'DRAFT',
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED'
+}
+
+export enum UserChallengeStatus {
+  JOINED = 'JOINED',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED'
+}
+
+export enum RewardStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE'
+}
+
+export enum RedemptionStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  FULFILLED = 'FULFILLED',
+  REJECTED = 'REJECTED'
+}
+
+export enum NotificationType {
+  SYSTEM = 'SYSTEM',
+  CHALLENGE = 'CHALLENGE',
+  COMPLIANCE = 'COMPLIANCE',
+  APPROVAL = 'APPROVAL',
+  BADGE = 'BADGE'
+}

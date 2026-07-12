@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+client/node_modules/
+
+# Local databases & logs
+prisma/dev.db
+prisma/dev.db-journal
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+
+# Build outputs
+dist/
+client/dist/
+
+# OS/IDE folders
+.DS_Store
+.idea/
+.vscode/
+
+# NPM configurations local overrides
+npm-cache/
+npm-temp/
+temp/
+node/
+node.zip
