@@ -111,7 +111,7 @@ export default function AppLayout() {
         <div className="p-4 border-t border-slate-800 bg-slate-900/50">
           <div className="flex items-center mb-3">
             <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400 font-bold mr-3">
-              {user?.firstName[0]}{user?.lastName[0]}
+              {user?.firstName?.[0] || ''}{user?.lastName?.[0] || ''}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{user?.firstName} {user?.lastName}</p>
